@@ -12,70 +12,70 @@
 
     """
 
-import numpy
 import itertools
-
 from enum import Enum
+
+import numpy
 
 # MARK: - Position
 
 position_range = {
-    'MX': (4096, 360.0),
-    'SR': (4096, 360.0),
-    'EX': (4096, 251.0),
-    '*': (1024, 300.0)
+    "MX": (4096, 360.0),
+    "SR": (4096, 360.0),
+    "EX": (4096, 251.0),
+    "*": (1024, 300.0),
 }
 
 torque_max = {  # in N.m
-    'MX-106': 8.4,
-    'MX-64': 6.,
-    'MX-28': 2.5,
-    'MX-12': 1.2,
-    'AX-12': 1.2,
-    'AX-18': 1.8,
-    'RX-24': 2.6,
-    'RX-28': 2.5,
-    'RX-64': 4.,
-    'XL-320': 0.39,
-    'SR-RH4D': 0.57,
-    'EX-106': 10.9
+    "MX-106": 8.4,
+    "MX-64": 6.0,
+    "MX-28": 2.5,
+    "MX-12": 1.2,
+    "AX-12": 1.2,
+    "AX-18": 1.8,
+    "RX-24": 2.6,
+    "RX-28": 2.5,
+    "RX-64": 4.0,
+    "XL-320": 0.39,
+    "SR-RH4D": 0.57,
+    "EX-106": 10.9,
 }
 
 velocity = {  # in degree/s
-    'MX-106': 270.,
-    'MX-64': 378.,
-    'MX-28': 330.,
-    'MX-12': 2820.,
-    'AX-12': 354.,
-    'AX-18': 582.,
-    'RX-24': 756.,
-    'RX-28': 402.,
-    'RX-64': 294.,
-    'SR-RH4D': 300.   
+    "MX-106": 270.0,
+    "MX-64": 378.0,
+    "MX-28": 330.0,
+    "MX-12": 2820.0,
+    "AX-12": 354.0,
+    "AX-18": 582.0,
+    "RX-24": 756.0,
+    "RX-28": 402.0,
+    "RX-64": 294.0,
+    "SR-RH4D": 300.0,
 }
 
 
 def dxl_to_degree(value, model):
-    determined_model = '*'
-    if model.startswith('MX'):
-        determined_model = 'MX'
-    elif model.startswith('SR'):
-        determined_model = 'SR'
-    elif model.startswith('EX'):
-        determined_model = 'EX'
+    determined_model = "*"
+    if model.startswith("MX"):
+        determined_model = "MX"
+    elif model.startswith("SR"):
+        determined_model = "SR"
+    elif model.startswith("EX"):
+        determined_model = "EX"
     max_pos, max_deg = position_range[determined_model]
 
     return round(((max_deg * float(value)) / (max_pos - 1)) - (max_deg / 2), 2)
 
 
 def degree_to_dxl(value, model):
-    determined_model = '*'
-    if model.startswith('MX'):
-        determined_model = 'MX'
-    elif model.startswith('SR'):
-        determined_model = 'SR'
-    elif model.startswith('EX'):
-        determined_model = 'EX'
+    determined_model = "*"
+    if model.startswith("MX"):
+        determined_model = "MX"
+    elif model.startswith("SR"):
+        determined_model = "SR"
+    elif model.startswith("EX"):
+        determined_model = "EX"
     max_pos, max_deg = position_range[determined_model]
 
     pos = int(round((max_pos - 1) * ((max_deg / 2 + float(value)) / max_deg), 0))
@@ -83,21 +83,24 @@ def degree_to_dxl(value, model):
 
     return pos
 
+
 # MARK: - Speed
+
 
 # Speed factor (RPM per least significant bit)
 def _speed_factor(model):
-    if model == 'MX-12':
+    if model == "MX-12":
         return 0.916
 
-    if model.startswith('MX') or model.startswith('SR'):
+    if model.startswith("MX") or model.startswith("SR"):
         return 0.114
 
     return 0.111
 
+
 def dxl_to_speed(value, model):
     cw, speed = divmod(value, 1024)
-    direction = (-2 * cw + 1)
+    direction = -2 * cw + 1
 
     return direction * (speed * _speed_factor(model)) * 6
 
@@ -110,6 +113,7 @@ def speed_to_dxl(value, model):
     value = min(max(value, -max_value), max_value)
 
     return int(round(direction + abs(value) / (6 * speed_factor), 0))
+
 
 # MARK: - Torque
 
@@ -128,6 +132,7 @@ def dxl_to_load(value, model):
 
     return dxl_to_torque(load, model) * direction
 
+
 # MARK - Acceleration
 
 
@@ -142,38 +147,39 @@ def acceleration_to_dxl(value, model):
 
     return int(round(value / 8.583, 0))  # degrees / sec**2
 
+
 # PID Gains
 
 
 def dxl_to_pid(value, model):
-    return (value[0] * 0.004,
-            value[1] * 0.48828125,
-            value[2] * 0.125)
+    return (value[0] * 0.004, value[1] * 0.48828125, value[2] * 0.125)
 
 
 def pid_to_dxl(value, model):
     def truncate(x):
         return int(max(0, min(x, 254)))
+
     return [truncate(x * y) for x, y in zip(value, (250, 2.048, 8.0))]
+
 
 # MARK: - Model
 
 
 dynamixelModels = {
-    12: 'AX-12',    # 12 + (0<<8)
-    18: 'AX-18',    # 18 + (0<<8)
-    24: 'RX-24',    # 24 + (0<<8)
-    28: 'RX-28',    # 28 + (0<<8)
-    29: 'MX-28',    # 29 + (0<<8)
-    64: 'RX-64',    # 64 + (0<<8)
-    107: 'EX-106',
-    360: 'MX-12',   # 104 + (1<<8)
-    310: 'MX-64',   # 54 + (1<<8)
-    320: 'MX-106',  # 64 + (1<<8)
-    350: 'XL-320',  # 94 + (1<<8)
-    400: 'SR-RH4D',
-    401: 'SR-RH4D',  # Virtual motor
-    16897: 'USB2AX'
+    12: "AX-12",  # 12 + (0<<8)
+    18: "AX-18",  # 18 + (0<<8)
+    24: "RX-24",  # 24 + (0<<8)
+    28: "RX-28",  # 28 + (0<<8)
+    29: "MX-28",  # 29 + (0<<8)
+    64: "RX-64",  # 64 + (0<<8)
+    107: "EX-106",
+    360: "MX-12",  # 104 + (1<<8)
+    310: "MX-64",  # 54 + (1<<8)
+    320: "MX-106",  # 64 + (1<<8)
+    350: "XL-320",  # 94 + (1<<8)
+    400: "SR-RH4D",
+    401: "SR-RH4D",  # Virtual motor
+    16897: "USB2AX",
 }
 
 
@@ -181,7 +187,9 @@ def dxl_to_model(value, dummy=None):
     try:
         return dynamixelModels[value]
     except KeyError:
-        return 'Unknown model number {}'.format(value)
+        return "Unknown model number {}".format(value)
+
+
 # MARK: - Drive Mode
 
 
@@ -190,12 +198,15 @@ def check_bit(value, offset):
 
 
 def dxl_to_drive_mode(value, model):
-    return ('reverse' if check_bit(value, 0) else 'normal',
-            'slave' if check_bit(value, 1) else 'master')
+    return (
+        "reverse" if check_bit(value, 0) else "normal",
+        "slave" if check_bit(value, 1) else "master",
+    )
 
 
 def drive_mode_to_dxl(value, model):
-    return (int('slave' in value) << 1 | int('reverse' in value))
+    return int("slave" in value) << 1 | int("reverse" in value)
+
 
 # MARK: - Baudrate
 
@@ -216,12 +227,7 @@ dynamixelBaudrates = {
 }
 
 dynamixelBaudratesWithModel = {
-    'XL-320': {
-        0: 9600.0,
-        1: 57600.0,
-        2: 115200.0,
-        3: 1000000.0
-    }
+    "XL-320": {0: 9600.0, 1: 57600.0, 2: 115200.0, 3: 1000000.0}
 }
 
 
@@ -234,7 +240,12 @@ def baudrate_to_dxl(value, model):
     for k, v in current_baudrates.items():
         if (abs(v - value) / float(value)) < 0.05:
             return k
-    raise ValueError('incorrect baudrate {} (possible values {})'.format(value, list(current_baudrates.values())))
+    raise ValueError(
+        "incorrect baudrate {} (possible values {})".format(
+            value, list(current_baudrates.values())
+        )
+    )
+
 
 # MARK: - Return Delay Time
 
@@ -246,6 +257,7 @@ def dxl_to_rdt(value, model):
 def rdt_to_dxl(value, model):
     return int(value / 2)
 
+
 # MARK: - Temperature
 
 
@@ -256,16 +268,18 @@ def dxl_to_temperature(value, model):
 def temperature_to_dxl(value, model):
     return int(value)
 
+
 # MARK: - Current
 
 
 def dxl_to_current(value, model):
-    if model.startswith('SR'):
+    if model.startswith("SR"):
         # The SR motors do use a different conversion formula than the dynamixel motors
         # See http://kb.seedrobotics.com/doku.php?id=dh4d:dynamixelcontroltables
         return (value * 0.4889) / 1000.0
     else:
         return 4.5 * (value - 2048.0) / 1000.0
+
 
 # MARK: - Voltage
 
@@ -277,10 +291,11 @@ def dxl_to_voltage(value, model):
 def voltage_to_dxl(value, model):
     return int(value * 10)
 
+
 # MARK: - Status Return Level
 
 
-status_level = ('never', 'read', 'always')
+status_level = ("never", "read", "always")
 
 
 def dxl_to_status(value, model):
@@ -289,22 +304,27 @@ def dxl_to_status(value, model):
 
 def status_to_dxl(value, model):
     if value not in status_level:
-        raise ValueError('status "{}" should be chosen among {}'.format(value, status_level))
+        raise ValueError(
+            'status "{}" should be chosen among {}'.format(value, status_level)
+        )
     return status_level.index(value)
+
 
 # MARK: - Error
 
 # TODO: depend on protocol v1 vs v2
 
 
-dynamixelErrors = ['None Error',
-                   'Instruction Error',
-                   'Overload Error',
-                   'Checksum Error',
-                   'Range Error',
-                   'Overheating Error',
-                   'Angle Limit Error',
-                   'Input Voltage Error']
+dynamixelErrors = [
+    "None Error",
+    "Instruction Error",
+    "Overload Error",
+    "Checksum Error",
+    "Range Error",
+    "Overheating Error",
+    "Angle Limit Error",
+    "Input Voltage Error",
+]
 
 
 def dxl_to_alarm(value, model):
@@ -318,14 +338,13 @@ def decode_error(error_code):
 
 def alarm_to_dxl(value, model):
     if not set(value).issubset(dynamixelErrors):
-        raise ValueError('should only contains error among {}'.format(dynamixelErrors))
+        raise ValueError("should only contains error among {}".format(dynamixelErrors))
 
     indices = [len(dynamixelErrors) - 1 - dynamixelErrors.index(e) for e in value]
-    return sum(2 ** i for i in indices)
+    return sum(2**i for i in indices)
 
 
-XL320LEDColors = Enum('Colors', 'off red green yellow '
-                      'blue pink cyan white')
+XL320LEDColors = Enum("Colors", "off red green yellow " "blue pink cyan white")
 
 
 def dxl_to_led_color(value, model):
@@ -339,8 +358,8 @@ def led_color_to_dxl(value, model):
 
 
 control_modes = {
-    1: 'wheel',
-    2: 'joint',
+    1: "wheel",
+    2: "joint",
 }
 
 
@@ -349,8 +368,8 @@ def dxl_to_control_mode(value, _):
 
 
 def control_mode_to_dxl(mode, _):
-    return (next((v for v, m in control_modes.items()
-                  if m == mode), None))
+    return next((v for v, m in control_modes.items() if m == mode), None)
+
 
 # MARK: - Various utility functions
 
@@ -364,14 +383,17 @@ def bool_to_dxl(value, model):
 
 
 def dxl_decode(data):
-    if len(data) not in (1, 2):
-        raise ValueError('try to decode incorrect data {}'.format(data))
+    if len(data) not in (1, 2, 4):
+        raise ValueError("try to decode incorrect data {}".format(data))
 
     if len(data) == 1:
         return data[0]
 
     if len(data) == 2:
         return data[0] + (data[1] << 8)
+
+    if len(data) == 4:
+        return data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24)
 
 
 def dxl_decode_all(data, nb_elem):
@@ -383,14 +405,22 @@ def dxl_decode_all(data, nb_elem):
 
 
 def dxl_code(value, length):
-    if length not in (1, 2):
-        raise ValueError('try to code value with an incorrect length {}'.format(length))
+    if length not in (1, 2, 4):
+        raise ValueError("try to code value with an incorrect length {}".format(length))
 
     if length == 1:
-        return (value, )
+        return (value,)
 
     if length == 2:
         return (value % 256, value >> 8)
+
+    if length == 4:
+        return (
+            value & 0xFF,
+            (value >> 8) & 0xFF,
+            (value >> 16) & 0xFF,
+            (value >> 24) & 0xFF,
+        )
 
 
 def dxl_code_all(value, length, nb_elem):
