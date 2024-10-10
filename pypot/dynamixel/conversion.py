@@ -383,7 +383,7 @@ def bool_to_dxl(value, model):
 
 
 def dxl_decode(data):
-    if len(data) not in (1, 2, 4):
+    if len(data) not in (1, 2, 4, 8):
         raise ValueError("try to decode incorrect data {}".format(data))
 
     if len(data) == 1:
@@ -394,6 +394,13 @@ def dxl_decode(data):
 
     if len(data) == 4:
         return data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24)
+
+    # return a tuple of two 4 bytes values
+    if len(data) == 8:
+        return (
+            data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24),
+            data[4] + (data[5] << 8) + (data[6] << 16) + (data[7] << 24),
+        )
 
 
 def dxl_decode_all(data, nb_elem):
